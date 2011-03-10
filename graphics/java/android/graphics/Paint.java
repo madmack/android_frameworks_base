@@ -16,7 +16,6 @@
 
 package android.graphics;
 
-import android.graphics.utils.ArabicReshape;
 import android.text.TextUtils;
 import android.text.SpannableString;
 import android.text.SpannedString;
@@ -40,6 +39,8 @@ public class Paint {
     private boolean     mHasCompatScaling;
     private float       mCompatScaling;
     private float       mInvCompatScaling;
+    
+    private static boolean myDebug = true;
     
     private static final Style[] sStyleArray = {
         Style.FILL, Style.STROKE, Style.FILL_AND_STROKE
@@ -1057,16 +1058,20 @@ public class Paint {
         if (text instanceof String) {
             return measureText((String)text, start, end);
         }
-        if (text instanceof SpannedString ||
-            text instanceof SpannableString) {
-            return measureText(text.toString(), start, end);
+        if (text instanceof SpannableString) {
+            return measureText(((SpannableString)text).toStringDraw(), start, end);
+        }
+
+	if (text instanceof SpannedString) {
+            return measureText(((SpannedString)text).toStringDraw(), start, end);
         }
         if (text instanceof GraphicsOperations) {
             return ((GraphicsOperations)text).measureText(start, end, this);
         }
 
         char[] buf = TemporaryBuffer.obtain(end - start);
-        TextUtils.getChars(text, start, end, buf, 0);
+        //TextUtils.getChars(text, start, end, buf, 0);
+        TextUtils.getCharsDraw(text, start, end, buf, 0);
         float result = measureText(buf, 0, end - start);
         TemporaryBuffer.recycle(buf);
         return result;
@@ -1133,7 +1138,7 @@ public class Paint {
         char[] buf = TemporaryBuffer.obtain(end - start);
         int result;
 
-        TextUtils.getChars(text, start, end, buf, 0);
+        TextUtils.getCharsDraw(text, start, end, buf, 0);
 
         if (measureForwards) {
             result = breakText(buf, 0, end - start, maxWidth, measuredWidth);
@@ -1223,9 +1228,12 @@ public class Paint {
         if (text instanceof String) {
             return getTextWidths((String) text, start, end, widths);
         }
-        if (text instanceof SpannedString ||
-            text instanceof SpannableString) {
-            return getTextWidths(text.toString(), start, end, widths);
+        if (text instanceof SpannedString ) {
+            return getTextWidths(((SpannedString)text).toStringDraw(), start, end, widths);
+        }
+
+	 if (text instanceof SpannableString) {
+            return getTextWidths(((SpannableString)text).toStringDraw(), start, end, widths);
         }
         if (text instanceof GraphicsOperations) {
             return ((GraphicsOperations) text).getTextWidths(start, end,
@@ -1233,7 +1241,7 @@ public class Paint {
         }
 
         char[] buf = TemporaryBuffer.obtain(end - start);
-    	TextUtils.getChars(text, start, end, buf, 0);
+    	TextUtils.getCharsDraw(text, start, end, buf, 0);
     	int result = getTextWidths(buf, 0, end - start, widths);
         TemporaryBuffer.recycle(buf);
     	return result;
@@ -1300,18 +1308,8 @@ public class Paint {
         if ((index | count) < 0 || index + count > text.length) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        boolean hasBidi=Canvas.bidiTest(text,index,count);
-        if (hasBidi) {
-            char[] bidiText;
-            bidiText=Canvas.bidiProcess(text,index,count);
-            String reshapedText=ArabicReshape.reshape(new String(bidiText));
-            /* The reshaping may make the string smaller */
-            native_getTextPath(mNativePaint, reshapedText.toCharArray(), 0,
-                                count - ((count-reshapedText.length())>0 ? (count-reshapedText.length()) : 0),
-                                x, y, path.ni());
-        } else {
-            native_getTextPath(mNativePaint, text, index, count, x, y, path.ni());
-        }
+        native_getTextPath(mNativePaint, text, index, count, x, y, path.ni());
+        
     }
 
     /**
@@ -1332,17 +1330,7 @@ public class Paint {
         if ((start | end | (end - start) | (text.length() - end)) < 0) {
             throw new IndexOutOfBoundsException();
         }
-        boolean hasBidi=Canvas.bidiTest(text,start,start+end);
-        if (hasBidi) {
-            char[] bidiText;
-            bidiText=Canvas.bidiProcess(text.toCharArray(),start,start+end);
-            String reshapedText=ArabicReshape.reshape(new String(bidiText));
-            /* The reshaping may make the string smaller */
-            native_getTextPath(mNativePaint, reshapedText, 0, end-start - ((end-start - reshapedText.length())>0 ? (end-start - reshapedText.length()) : 0),
-                                x, y, path.ni());
-        } else {
-            native_getTextPath(mNativePaint, text, start, end, x, y, path.ni());
-        }
+        native_getTextPath(mNativePaint, text, start, end, x, y, path.ni());
     }
     
     /**

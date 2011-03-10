@@ -19,9 +19,14 @@ package android.text;
 import com.android.internal.util.ArrayUtils;
 
 import java.lang.reflect.Array;
-
-/* package */ abstract class SpannableStringInternal
+import com.ibm.icu.text.*;
+/* package */ abstract class SpannableStringInternal implements GetCharsDraw
 {
+	
+	//Start Arabic Shaping
+ 	ArabicShaping AShaping;
+ 	//boolean debugG = false;
+ 	///Arabic Shaping
     /* package */ SpannableStringInternal(CharSequence source,
                                           int start, int end) {
         if (start == 0 && end == source.length())
@@ -29,6 +34,38 @@ import java.lang.reflect.Array;
         else
             mText = source.toString().substring(start, end);
 
+/////////////////////////Arabic Shaping
+
+    	//mTextRaw = new char[len];
+    	StringBuffer tmp = new StringBuffer(mText);
+    	mTextRaw = tmp.toString();
+
+    	AShaping = new ArabicShaping(ArabicShaping.LETTERS_SHAPE|ArabicShaping.LENGTH_FIXED_SPACES_NEAR);
+    		//	|ArabicShaping.TEXT_DIRECTION_VISUAL_LTR);
+
+
+    	//System.out.println("before shaping,text in SpannableInt has -->" + mText );
+
+    	try {
+    		mText = AShaping.shape(mText);
+    		//if (!noBidi) tmp = ABidi.writeReordered(Bidi.REORDER_NUMBERS_SPECIAL);
+    		//else tmp = Bidi.writeReverse(String.copyValueOf(text),Bidi.REORDER_NUMBERS_SPECIAL);
+    		
+    	}
+
+    	catch (ArabicShapingException e){
+    				System.out.println("Cannot Convert SpannableInt Text " );
+    		}
+    	catch (NullPointerException e){
+    				System.out.println("Null,Cannot Convert SpannableInt Text ");
+    		}
+
+
+    	//System.out.println("after shaping,text in SpannableInt has -->" + mText );
+    	//Thread.dumpStack();*/
+
+    	//////////////////////////////////////////////////////////////////////
+        
         int initial = ArrayUtils.idealIntArraySize(0);
         mSpans = new Object[initial];
         mSpanData = new int[initial * 3];
@@ -57,18 +94,28 @@ import java.lang.reflect.Array;
     }
 
     public final char charAt(int i) {
-        return mText.charAt(i);
+        return mTextRaw.charAt(i);
     }
+    
+    public final char charAtDraw(int i) {
+    	return mText.charAt(i);
+    	}
 
     public final String toString() {
-        return mText;
+        return mTextRaw;
     }
 
+    public final String toStringDraw() {
+    	return mText;
+    	}
     /* subclasses must do subSequence() to preserve type */
 
     public final void getChars(int start, int end, char[] dest, int off) {
-        mText.getChars(start, end, dest, off);
+        mTextRaw.getChars(start, end, dest, off);
     }
+    public final void getCharsDraw(int start, int end, char[] dest, int off) {
+    	mText.getChars(start, end, dest, off);
+    	}
 
     /* package */ void setSpan(Object what, int start, int end, int flags) {
         int nstart = start;
@@ -358,7 +405,7 @@ import java.lang.reflect.Array;
         }
     }
 
-    private String mText;
+    private String mText,mTextRaw;
     private Object[] mSpans;
     private int[] mSpanData;
     private int mSpanCount;
