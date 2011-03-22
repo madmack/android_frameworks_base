@@ -38,6 +38,8 @@ import android.view.KeyEvent;
  * For text that will not change, use a {@link StaticLayout}.
  */
 public abstract class Layout {
+    /** Delta used for floating point equality checks. */
+    private static final float FP_EQUALITY_DELTA = 1e-8f;
     private static final boolean DEBUG = false;
     private static final ParagraphStyle[] NO_PARA_SPANS =
         ArrayUtils.emptyArray(ParagraphStyle.class);
@@ -364,7 +366,7 @@ public abstract class Layout {
                     Assert.assertTrue(dir == DIR_LEFT_TO_RIGHT);
                     Assert.assertNotNull(c);
                 }
-                c.drawText(buf, start, end, x, lbaseline, paint,false);
+                c.drawText(buf, start, end, x, lbaseline, paint);
             } else {
                 drawText(c, buf, start, end, dir, directions,
                     x, ltop, lbaseline, lbottom, paint, mWorkPaint,
@@ -1153,7 +1155,7 @@ public abstract class Layout {
         if (h2 < 0.5f)
             h2 = 0.5f;
 
-        if (h1 == h2) {
+        if (Math.abs(h1 - h2) < FP_EQUALITY_DELTA) {
             dest.moveTo(h1, top);
             dest.lineTo(h1, bottom);
         } else {
@@ -1392,7 +1394,7 @@ public abstract class Layout {
             buf = null;
         } else {
             buf = TextUtils.obtain(end - start);
-            TextUtils.getChars(text, start, end, buf, 0);
+            TextUtils.getCharsDraw(text, start, end, buf, 0);
         }
 
         float h = 0;
@@ -1475,7 +1477,7 @@ public abstract class Layout {
 
         if (hasTabs) {
             buf = TextUtils.obtain(end - start);
-            TextUtils.getChars(text, start, end, buf, 0);
+            TextUtils.getCharsDraw(text, start, end, buf, 0);
         }
 
         float h = 0;
@@ -1622,7 +1624,7 @@ public abstract class Layout {
   
         if (hasTabs) {
             buf = TextUtils.obtain(end - start);
-            TextUtils.getChars(text, start, end, buf, 0);
+            TextUtils.getCharsDraw(text, start, end, buf, 0);
         }
 
         int len = end - start;
@@ -1870,7 +1872,7 @@ public abstract class Layout {
      */
     public abstract int getEllipsisCount(int line);
 
-    /* package */ static class Ellipsizer implements CharSequence, GetChars {
+    /* package */ static class Ellipsizer implements CharSequence, GetChars, GetCharsDraw {
         /* package */ CharSequence mText;
         /* package */ Layout mLayout;
         /* package */ int mWidth;
@@ -1881,6 +1883,16 @@ public abstract class Layout {
         }
 
         public char charAt(int off) {
+            char[] buf = TextUtils.obtain(1);
+            getChars(off, off + 1, buf, 0);
+            char ret = buf[0];
+
+            TextUtils.recycle(buf);
+            return ret;
+        }
+        
+      //Arabic Support Addition
+        public char charAtDraw(int off) {
             char[] buf = TextUtils.obtain(1);
             getChars(off, off + 1, buf, 0);
             char ret = buf[0];
@@ -1899,6 +1911,18 @@ public abstract class Layout {
                 mLayout.ellipsize(start, end, i, dest, destoff);
             }
         }
+        
+      //Arabic Support Addition
+    	public void getCharsDraw(int start, int end, char[] dest, int destoff) {
+                int line1 = mLayout.getLineForOffset(start);
+                int line2 = mLayout.getLineForOffset(end);
+
+                TextUtils.getCharsDraw(mText, start, end, dest, destoff);
+
+                for (int i = line1; i <= line2; i++) {
+                    mLayout.ellipsize(start, end, i, dest, destoff);
+                }
+            }
 
         public int length() {
             return mText.length();
